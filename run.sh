@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[1/4] Prepare model directory"
+echo "[1/5] Check llama-server"
+which llama-server
+llama-server --help | head -n 5 || true
+
+echo "[2/5] Prepare model directory"
 mkdir -p "${MODEL_DIR}"
 
-echo "[2/4] Download GGUF from Hugging Face"
+echo "[3/5] Download GGUF from Hugging Face"
 python3 - <<'PY'
 from huggingface_hub import hf_hub_download
 import os
@@ -22,11 +26,11 @@ hf_hub_download(
 )
 PY
 
-echo "[3/4] Check downloaded file"
+echo "[4/5] Check downloaded file"
 ls -lh "${MODEL_DIR}/${MODEL_FILE}"
 
-echo "[4/4] Start llama-server"
-exec /opt/llama.cpp/build/bin/llama-server \
+echo "[5/5] Start llama-server"
+exec llama-server \
   -m "${MODEL_DIR}/${MODEL_FILE}" \
   --alias qwen36-balanced \
   --host 0.0.0.0 \
