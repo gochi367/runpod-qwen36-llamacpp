@@ -27,8 +27,11 @@ RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
       -DGGML_CUDA=ON \
       -DGGML_CURL=ON \
       -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build /opt/llama.cpp/build --config Release -j"$(nproc)" && \
-    strip /opt/llama.cpp/build/bin/llama-server || true
+    cmake --build /opt/llama.cpp/build --target llama-server --config Release -j"$(nproc)" && \
+    SERVER_BIN="$(find /opt/llama.cpp/build -type f -name 'llama-server' -executable | head -n 1)" && \
+    echo "Found llama-server at: ${SERVER_BIN}" && \
+    cp "${SERVER_BIN}" /usr/local/bin/llama-server && \
+    chmod +x /usr/local/bin/llama-server
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
