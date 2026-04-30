@@ -30,6 +30,10 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/qwen36-llamacpp:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/qwen36-llamacpp:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/qwen36-llamacpp:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: false
+          sbom: false
