@@ -3,13 +3,19 @@ FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV MODEL_DIR=/tmp/models
 ENV HF_HOME=/tmp/hf_home
+ENV HF_REPO=HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Balanced
+ENV HF_FILE=Qwen3.6-27B-Uncensored-HauhauCS-Balanced-Q5_K_P.gguf
 ENV MODEL_REPO=HauhauCS/Qwen3.6-27B-Uncensored-HauhauCS-Balanced
 ENV MODEL_FILE=Qwen3.6-27B-Uncensored-HauhauCS-Balanced-Q5_K_P.gguf
 ENV PATH="/opt/venv/bin:${PATH}"
 
+ARG CUDA_ARCHITECTURES="75;80;86;89;90"
+ARG BUILD_JOBS=2
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     cmake \
+    ninja-build \
     build-essential \
     ca-certificates \
     curl \
@@ -22,24 +28,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN python3 -m venv /opt/venv && \
     /opt/venv/bin/pip install --no-cache-dir -U pip && \
-    /opt/venv/bin/pip install --no-cache-dir -U "huggingface_hub[cli]" hf_xet
+    /opt/venv/bin/pip install --no-cache-dir -U huggingface_hub hf_xet
 
 WORKDIR /opt
 
 RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git && \
-    cmake -S /opt/llama.cpp -B /opt/llama.cpp/build \
+    cmake -S /opt/llama.cpp -B /opt/llama.cpp/build -G Ninja \
       -DGGML_CUDA=ON \
       -DGGML_CURL=ON \
+      -DCMAKE_CUDA_ARCHITECTURES="${CUDA_ARCHITECTURES}" \
       -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build /opt/llama.cpp/build --target llama-server --config Release -j"$(nproc)" && \
+    cmake --build /opt/llama.cpp/build --target llama-server --config Release -j"${BUILD_JOBS}" && \
     SERVER_BIN="$(find /opt/llama.cpp/build -type f -name 'llama-server' -executable | head -n 1)" && \
+    test -n "${SERVER_BIN}" && \
     echo "Found llama-server at: ${SERVER_BIN}" && \
     cp "${SERVER_BIN}" /usr/local/bin/llama-server && \
-    chmod +x /usr/local/bin/llama-server
+    chmod +x /usr/local/bin/llama-server && \
+    /usr/local/bin/llama-server --help >/tmp/llama-server-help.txt 2>&1 || true
 
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-EXPOSE 8000
+EXPOSE 8080
 
 ENTRYPOINT ["/run.sh"]
